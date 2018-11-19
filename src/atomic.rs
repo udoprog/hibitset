@@ -54,8 +54,8 @@ impl AtomicBitSet {
         // to exit before l3 was set. Resulting in the iterator to be in an
         // incorrect state. The window is small, but it exists.
         let set = self.layer1[p1].add(id);
-        self.layer2[p2].fetch_or(id.mask(SHIFT2), Ordering::Relaxed);
-        self.layer3.fetch_or(id.mask(SHIFT3), Ordering::Relaxed);
+        self.layer2[p2].fetch_or(id.mask(SHIFT2), Ordering::Release);
+        self.layer3.fetch_or(id.mask(SHIFT3), Ordering::Release);
         set
     }
 
@@ -153,15 +153,15 @@ impl AtomicBitSet {
 impl BitSetLike for AtomicBitSet {
     #[inline]
     fn layer3(&self) -> usize {
-        self.layer3.load(Ordering::Relaxed)
+        self.layer3.load(Ordering::Acquire)
     }
     #[inline]
     fn layer2(&self, i: usize) -> usize {
-        self.layer2[i].load(Ordering::Relaxed)
+        self.layer2[i].load(Ordering::Acquire)
     }
     #[inline]
     fn layer1(&self, i: usize) -> usize {
-        self.layer1[i].mask.load(Ordering::Relaxed)
+        self.layer1[i].mask.load(Ordering::Acquire)
     }
     #[inline]
     fn layer0(&self, i: usize) -> usize {
@@ -169,7 +169,7 @@ impl BitSetLike for AtomicBitSet {
         self.layer1[o1]
             .atom
             .get()
-            .map(|l0| l0[o0].load(Ordering::Relaxed))
+            .map(|l0| l0[o0].load(Ordering::Acquire))
             .unwrap_or(0)
     }
     #[inline]
@@ -221,15 +221,15 @@ impl AtomicBlock {
         }
 
         let (i, m) = (id.row(SHIFT1), id.mask(SHIFT0));
-        let old = self.atom.get().unwrap()[i].fetch_or(m, Ordering::Relaxed);
-        self.mask.fetch_or(id.mask(SHIFT1), Ordering::Relaxed);
+        let old = self.atom.get().unwrap()[i].fetch_or(m, Ordering::Release);
+        self.mask.fetch_or(id.mask(SHIFT1), Ordering::Release);
         old & m != 0
     }
 
     fn contains(&self, id: Index) -> bool {
         self.atom
             .get()
-            .map(|l0| l0[id.row(SHIFT1)].load(Ordering::Relaxed) & id.mask(SHIFT0) != 0)
+            .map(|l0| l0[id.row(SHIFT1)].load(Ordering::Acquire) & id.mask(SHIFT0) != 0)
             .unwrap_or(false)
     }
 
